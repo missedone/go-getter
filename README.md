@@ -72,6 +72,7 @@ can be augmented at runtime by implementing the `Getter` interface.
   * Mercurial
   * HTTP
   * Amazon S3
+  * Maven
 
 In addition to the above protocols, go-getter has what are called "detectors."
 These take a URL and attempt to automatically choose the best protocol for
@@ -254,4 +255,10 @@ Some examples for these addressing schemes:
 - s3::https://s3-eu-west-1.amazonaws.com/bucket/foo
 - bucket.s3.amazonaws.com/foo
 - bucket.s3-eu-west-1.amazonaws.com/foo/bar
+
+### Maven (`maven`)
+
+To download artifact from maven repo.
+Url format: `mvn::http://username@host/mavan/repo/path?groupId=<group_id>&artifactId=<artifact_id>&version=<artifact_version>&type=<artifact_type>`
+If the version is a snapshot version, latest snapshot artifact will be downloaded.
 

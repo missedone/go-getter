@@ -59,6 +59,9 @@ func init() {
 		"s3":    new(S3Getter),
 		"http":  httpGetter,
 		"https": httpGetter,
+		"mvn": &MvnGetter{
+			HttpGet: *httpGetter,
+		},
 	}
 }
 
