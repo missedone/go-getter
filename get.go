@@ -60,6 +60,9 @@ func init() {
 		"sftp":  new(SftpGetter),
 		"http":  httpGetter,
 		"https": httpGetter,
+		"mvn": &MvnGetter{
+			HttpGet: *httpGetter,
+		},
 	}
 }
 
