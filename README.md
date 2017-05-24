@@ -262,3 +262,5 @@ To download artifact from maven repo.
 Url format: `mvn::http://username@host/mavan/repo/path?groupId=<group_id>&artifactId=<artifact_id>&version=<artifact_version>&type=<artifact_type>`
 If the version is a snapshot version, latest snapshot artifact will be downloaded.
 
+To auto decompress the archive, pls specify the query parameter 'archive': `mvn::http://username@host/mavan/repo/path?groupId=<group_id>&artifactId=<artifact_id>&version=<artifact_version>&type=<artifact_type>&archive=<artifact_type>`
+

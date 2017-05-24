@@ -70,7 +70,11 @@ func (g *MvnGetter) GetFile(dst string, u *url.URL) error {
 	}
 
 	artifactUrl.Path += fmt.Sprintf("/%s-%s.%s", artifactId, ver, artType)
-	dstFile := filepath.Join(filepath.Dir(dst), filepath.Base(artifactUrl.Path))
+	dstFile := dst
+	// if it's not auto decompress archive mode, use the real file name
+	if !strings.HasSuffix(dst, "/archive") {
+		dstFile = filepath.Join(filepath.Dir(dst), filepath.Base(artifactUrl.Path))
+	}
 
 	log.Printf("Downloading %s to %s", artifactUrl, dstFile)
 	return g.HttpGet.GetFile(dstFile, artifactUrl)
