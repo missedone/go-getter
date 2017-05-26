@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/cheggaaa/pb"
 )
 
 // HttpGetter is a Getter implementation that will download from an HTTP
@@ -141,7 +143,11 @@ func (g *HttpGetter) GetFile(dst string, u *url.URL) error {
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, resp.Body)
+	bar := pb.New64(resp.ContentLength).SetUnits(pb.U_BYTES)
+	bar.Start()
+	reader := bar.NewProxyReader(resp.Body)
+	_, err = io.Copy(f, reader)
+	bar.Finish()
 	return err
 }
 
