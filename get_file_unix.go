@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/cheggaaa/pb"
 )
 
 func (g *FileGetter) Get(dst string, u *url.URL) error {
@@ -56,14 +58,14 @@ func (g *FileGetter) GetFile(dst string, u *url.URL) error {
 	}
 
 	// The source path must exist and be a file to be usable.
-	if fi, err := os.Stat(path); err != nil {
+	fi, err := os.Stat(path)
+	if err != nil {
 		return fmt.Errorf("source path error: %s", err)
 	} else if fi.IsDir() {
 		return fmt.Errorf("source path must be a file")
 	}
 
-	_, err := os.Lstat(dst)
-	if err != nil && !os.IsNotExist(err) {
+	if _, err := os.Lstat(dst); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
@@ -98,6 +100,10 @@ func (g *FileGetter) GetFile(dst string, u *url.URL) error {
 	}
 	defer dstF.Close()
 
-	_, err = io.Copy(dstF, srcF)
+	bar := pb.New64(fi.Size()).SetUnits(pb.U_BYTES)
+	bar.Start()
+	reader := bar.NewProxyReader(srcF)
+	_, err = io.Copy(dstF, reader)
+	bar.Finish()
 	return err
 }

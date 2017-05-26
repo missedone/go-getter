@@ -2,6 +2,7 @@ package getter
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/cheggaaa/pb"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -174,7 +176,15 @@ func (g *SftpGetter) getFile(sftp *sftp.Client, dst, src string, preservePerm bo
 	}
 
 	log.Printf("Downloading remote %s to local %s", src, dst)
-	_, err = rmtFile.WriteTo(dstFile)
+	rmtFileInfo, err := rmtFile.Stat()
+	if err != nil {
+		return err
+	}
+	bar := pb.New64(rmtFileInfo.Size()).SetUnits(pb.U_BYTES)
+	bar.Start()
+	writer := io.MultiWriter(dstFile, bar)
+	_, err = rmtFile.WriteTo(writer)
+	bar.Finish()
 	dstFile.Close()
 	if err != nil {
 		return err
@@ -182,10 +192,6 @@ func (g *SftpGetter) getFile(sftp *sftp.Client, dst, src string, preservePerm bo
 
 	if preservePerm {
 		// Chmod the file
-		rmtFileInfo, err := rmtFile.Stat()
-		if err != nil {
-			return err
-		}
 		if err := os.Chmod(dst, rmtFileInfo.Mode()); err != nil {
 			return err
 		}
