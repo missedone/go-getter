@@ -37,21 +37,7 @@ func mvnGetter_artifact(t *testing.T, repo, version, classifier string) {
 	mvnGetter := new(MvnGetter)
 	groupId := "org.testng"
 	artifactId := "testng"
-	ver := version
-	if strings.HasSuffix(version, "-SNAPSHOT") {
-		snapshotUrlStr := fmt.Sprintf("%s/org/testng/%s/%s", repo, artifactId, version)
-		snapshotUrl, err := url.Parse(snapshotUrlStr)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
-		snapshotVer, err := mvnGetter.ParseLastestSnapshotVersion(snapshotUrl)
-		if err != nil {
-			t.Fatalf("err: %s", err)
-		}
-		ver = snapshotVer
-	}
-
-	filename := artifactId + "-" + ver
+	filename := artifactId + "-" + version
 	if classifier != "" {
 		filename += "-" + classifier
 	}
@@ -79,13 +65,27 @@ func mvnGetter_artifact(t *testing.T, repo, version, classifier string) {
 		t.Fatalf("err: %s", err)
 	}
 
+	artifactFileVer := version
+	if strings.HasSuffix(version, "-SNAPSHOT") {
+		snapshotUrlStr := fmt.Sprintf("%s/org/testng/%s/%s", repo, artifactId, version)
+		snapshotUrl, err := url.Parse(snapshotUrlStr)
+		if err != nil {
+			t.Fatalf("err: %s", err)
+		}
+		snapshotVer, err := mvnGetter.ParseLastestSnapshotVersion(snapshotUrl)
+		if err != nil {
+			t.Fatalf("err: %s", err)
+		}
+		artifactFileVer = snapshotVer
+	}
+
 	// verify the jar file md5
 	httpGetter := new(HttpGetter)
 	var md5UrlStr string
 	if classifier == "" {
-		md5UrlStr = fmt.Sprintf("%s/org/testng/%s/%s/%s-%s.jar.md5", repo, artifactId, version, artifactId, ver)
+		md5UrlStr = fmt.Sprintf("%s/org/testng/%s/%s/%s-%s.jar.md5", repo, artifactId, version, artifactId, artifactFileVer)
 	} else {
-		md5UrlStr = fmt.Sprintf("%s/org/testng/%s/%s/%s-%s-%s.jar.md5", repo, artifactId, version, artifactId, ver, classifier)
+		md5UrlStr = fmt.Sprintf("%s/org/testng/%s/%s/%s-%s-%s.jar.md5", repo, artifactId, version, artifactId, artifactFileVer, classifier)
 	}
 	md5Url, err := url.Parse(md5UrlStr)
 	if err != nil {
