@@ -38,6 +38,10 @@ func (g *SftpGetter) ClientMode(u *url.URL) (ClientMode, error) {
 	return ClientModeFile, nil
 }
 
+func (g *SftpGetter) GetFilename(u *url.URL) (string, error) {
+	return "", nil
+}
+
 // Get the files under the remote dir.
 // Note: recursively download is not supported at the moment.
 // Query parameters:
