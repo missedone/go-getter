@@ -70,7 +70,6 @@ can be augmented at runtime by implementing the `Getter` interface.
   * Git
   * Mercurial
   * HTTP
-  * SFTP
   * Amazon S3
   * Maven
 
@@ -265,14 +264,6 @@ To use HTTP basic authentication with go-getter, simply prepend `username:passwo
 hostname in the URL such as `https://Aladdin:OpenSesame@www.example.com/index.html`. All special
 characters, including the username and password, must be URL encoded.
 
-### SFTP (`sftp`)
-
-uri format: `sftp://[username@]hostname[:port]/director_or_file_name[?options]`
-
-* when the path is a directory on the SFTP server
-all the files under the directory will be download, recursively download is not supported at momenet. 
-if want to download the specific file(s), use query parameter `fileName`, regex is supported: `?fileName=f1.txt&fileName=f2.txt&fileName=.*\.txt`
-
 ### S3 (`s3`)
 
 S3 takes various access configurations in the URL. Note that it will also
@@ -295,7 +286,7 @@ be used automatically.
   * `aws_access_key_id` (required) - Minio access key.
   * `aws_access_key_secret` (required) - Minio access key secret.
   * `region` (optional - defaults to us-east-1) - Region identifier to use.
-  * `version` (optional - fefaults to Minio default) - Configuration file format.
+  * `version` (optional - defaults to Minio default) - Configuration file format.
 
 #### S3 Bucket Examples
 
@@ -312,8 +303,12 @@ Some examples for these addressing schemes:
 ### Maven (`maven`)
 
 To download artifact from maven repo.
-Url format: `mvn::http://username@host/mavan/repo/path?groupId=<group_id>&artifactId=<artifact_id>&version=<artifact_version>&type=<artifact_type>`
-If the version is a snapshot version, latest snapshot artifact will be downloaded.
+Url format: `mvn::http://username@host/mavan/repo/path?groupId=<group_id>&artifactId=<artifact_id>&version=<artifact_version>&type=<artifact_type>&classifier=<artifact_classifier>`
+* groupId - (Required) the group id of the artifact
+* artifactId - (Required) the artifact id
+* version - (Required) If the version is a snapshot version, latest snapshot artifact will be downloaded.
+* type - (Optional) default as 'jar'
+* classifier - (Optional) the classifier of the artifact, e.g. 'sources'
 
 To auto decompress the archive, pls specify the query parameter 'archive': `mvn::http://username@host/mavan/repo/path?groupId=<group_id>&artifactId=<artifact_id>&version=<artifact_version>&type=<artifact_type>&archive=<artifact_type>`
 

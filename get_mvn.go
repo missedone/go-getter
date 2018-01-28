@@ -4,9 +4,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -21,11 +21,47 @@ func (g *MvnGetter) ClientMode(u *url.URL) (ClientMode, error) {
 	return ClientModeFile, nil
 }
 
-func (g *MvnGetter) Get(dst string, u *url.URL) error {
-	return fmt.Errorf("MvnGetter does not support download folder.")
+// GetFilename returns filename in format of '<artifactId>-<version>[-<classifier>].<type>'
+func (g *MvnGetter) GetFilename(u *url.URL) (string, error) {
+	q := u.Query()
+	artifactId := q.Get("artifactId")
+	if artifactId == "" {
+		return "", fmt.Errorf("query parameter 'artifactId' is required.")
+	}
+
+	version := q.Get("version")
+	if version == "" {
+		return "", fmt.Errorf("query parameter 'version' is required.")
+	}
+
+	classifier := q.Get("classifier")
+
+	artType := q.Get("type")
+	if artType == "" {
+		artType = "jar"
+	}
+
+	filename := artifactId + "-" + version
+	if classifier != "" {
+		filename += "-" + classifier
+	}
+	filename += "." + artType
+
+	return filename, nil
 }
 
-// Get the remote file.
+func (g *MvnGetter) Get(dstDir string, u *url.URL) error {
+	filename, err := g.GetFilename(u)
+	if err != nil {
+		return err
+	}
+
+	dstFile := filepath.Join(dstDir, filename)
+	return g.GetFile(dstFile, u)
+}
+
+// Get the artifact from remote maven repo.
+//
 // If the version is a snapshot version, it will get the latest snapshot artifact.
 // Query parameters:
 //   - groupId: the group id
@@ -34,60 +70,67 @@ func (g *MvnGetter) Get(dst string, u *url.URL) error {
 //   - type: the artifact type, default as 'jar'
 // example url: mvn::http://username@host/mavan/repo/path?groupId=org.example&artifactId=test&version=1.0.0-SNAPSHOT
 func (g *MvnGetter) GetFile(dst string, u *url.URL) error {
-	groupId := u.Query().Get("groupId")
+	q := u.Query()
+	groupId := q.Get("groupId")
 	if groupId == "" {
 		return fmt.Errorf("query parameter 'groupId' is required.")
 	}
-	artifactId := u.Query().Get("artifactId")
+	artifactId := q.Get("artifactId")
 	if artifactId == "" {
 		return fmt.Errorf("query parameter 'artifactId' is required.")
 	}
-	version := u.Query().Get("version")
+	// the artifact version, Ex., 6.13.1 or 6.13-SNAPSHOT
+	version := q.Get("version")
 	if version == "" {
 		return fmt.Errorf("query parameter 'version' is required.")
 	}
-	artType := u.Query().Get("type")
+	classifier := q.Get("classifier")
+	artType := q.Get("type")
 	if artType == "" {
 		artType = "jar"
 	}
 
+	// construct the real url hits the maven repo
 	artifactUrl, err := url.Parse(u.String())
 	if err != nil {
 		return err
 	}
 	artifactUrl.RawQuery = ""
-	artifactUrl.Path += fmt.Sprintf("/%s/%s/%s", strings.Replace(groupId, ".", "/", -1), artifactId, version)
+	artifactUrl.Path = path.Join(artifactUrl.Path, fmt.Sprintf("/%s/%s/%s", strings.Replace(groupId, ".", "/", -1), artifactId, version))
 
-	ver := version
+	// the artifact file version.
+	//   when the artifact version is a snapshot version, the artifact file version will be expanded to the latest snapshot version, Ex., '6.13-20171126.202552-6'
+	artifactFileVer := version
 	if strings.HasSuffix(version, "-SNAPSHOT") {
 		// get the latest snapshot
-		snapshotVer, err := g.parseLastestSnapshotVersion(artifactUrl)
+		snapshotVer, err := g.ParseLastestSnapshotVersion(artifactUrl)
 		if err != nil {
 			return err
 		}
 
-		ver = snapshotVer
+		artifactFileVer = snapshotVer
 	}
 
-	artifactUrl.Path += fmt.Sprintf("/%s-%s.%s", artifactId, ver, artType)
-	dstFile := dst
-	// if it's not auto decompress archive mode, use the real file name
-	if !strings.HasSuffix(dst, "/archive") {
-		dstFile = filepath.Join(filepath.Dir(dst), filepath.Base(artifactUrl.Path))
+	filename := artifactId + "-" + artifactFileVer
+	if classifier != "" {
+		filename += "-" + classifier
 	}
+	filename += "." + artType
+	artifactUrl.Path = path.Join(artifactUrl.Path, filename)
 
-	log.Printf("Downloading %s to %s", artifactUrl, dstFile)
-	return g.HttpGet.GetFile(dstFile, artifactUrl)
+	return g.HttpGet.GetFile(dst, artifactUrl)
 }
 
-func (g *MvnGetter) parseLastestSnapshotVersion(artifactUrl *url.URL) (string, error) {
-	mvnMetaUrl, err := url.Parse(artifactUrl.String())
+// get the latest snapshot version by parsig the maven-metadata.xml from remote maven repo.
+//   - artifactVerUrl the url to the artifact version, Ex., 'https://repo1.maven.org/maven2/org/testng/testng/6.13.1/'
+func (g *MvnGetter) ParseLastestSnapshotVersion(artifactVerUrl *url.URL) (string, error) {
+	mvnMetaUrl, err := url.Parse(artifactVerUrl.String())
 	if err != nil {
 		return "", err
 	}
-	mvnMetaUrl.Path += "/maven-metadata.xml"
+	mvnMetaUrl.Path = path.Join(mvnMetaUrl.Path, "maven-metadata.xml")
 
-	mvnMetaFile, err := ioutil.TempFile(os.TempDir(), "maven-metadata")
+	mvnMetaFile, err := ioutil.TempFile("", "maven-metadata")
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +146,9 @@ func (g *MvnGetter) parseLastestSnapshotVersion(artifactUrl *url.URL) (string, e
 	}
 
 	var meta Metadata
-	xml.Unmarshal(mvnMetaXml, &meta)
+	if err := xml.Unmarshal(mvnMetaXml, &meta); err != nil {
+		return "", err
+	}
 	vers := meta.Versioning.SnapshotVersions.VersionList
 	if len(vers) == 0 {
 		return "", fmt.Errorf("no snapshot versions in the %s", mvnMetaUrl)
