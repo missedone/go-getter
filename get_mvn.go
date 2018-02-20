@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path"
@@ -119,6 +120,7 @@ func (g *MvnGetter) GetFile(dst string, u *url.URL) error {
 	filename += "." + artType
 	artifactUrl.Path = path.Join(artifactUrl.Path, filename)
 
+	log.Printf("Downloading %s to %s", artifactUrl, dst)
 	return g.HttpGet.GetFile(dst, artifactUrl)
 }
 
